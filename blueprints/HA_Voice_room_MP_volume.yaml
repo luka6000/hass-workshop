@@ -1,0 +1,76 @@
+blueprint:
+  name: Voice assistant media player volume down on assist
+  description: "On voice assist, set volume to 1/3 on media players in the same room"
+  domain: automation
+  input:
+    version:
+      name: Version
+      description: just for you to know
+      default: v250104
+    assist:
+      name: Assist satellite
+      description: status entity
+      selector:
+        entity:
+          filter:
+            - domain: assist_satellite
+
+variables:
+  assist: !input assist
+
+triggers:
+  - trigger: state
+    entity_id: !input assist
+    to: null
+conditions:
+  - condition: not
+    conditions:
+      - condition: state
+        entity_id: !input assist
+        state: idle
+actions:
+  - variables:
+      mplayers: >-
+        ""{%for entity in
+        area_entities(area_id(assist)) 
+        %}{%if entity|contains("media_player") and entity not in
+        device_entities(device_id(assist))|select("contains",
+        "media_player") %}, "{{ entity }}"{%endif%}{%endfor%}
+  - alias: repeat for each media_player in the area
+    repeat:
+      sequence:
+        - variables:
+            mp: "{{ repeat.item }}"
+            vol: "{{ state_attr(repeat.item, 'volume_level') }}"
+            vol_anon: "{{ (state_attr(repeat.item, 'volume_level')|float/3)|round(2) }}"
+        - action: media_player.volume_set
+          data:
+            volume_level: "{{ vol_anon|float(2) }}"
+          target:
+            entity_id: "{{ mp }}"
+      for_each: "{{ mplayers|select|list }}"
+  - wait_for_trigger:
+      - trigger: state
+        entity_id: !input assist
+        to: idle
+    timeout:
+      hours: 0
+      minutes: 0
+      seconds: 10
+      milliseconds: 0
+  - alias: repeat for each media_player in the area
+    repeat:
+      sequence:
+        - variables:
+            mp: "{{ repeat.item }}"
+            vol: "{{ state_attr(repeat.item, 'volume_level') }}"
+            vol_old: "{{ (state_attr(repeat.item, 'volume_level')|float *3)|round(2) }}"
+        - action: media_player.volume_set
+          data:
+            volume_level: "{{ vol_old|float(2) }}"
+          target:
+            entity_id: "{{ mp }}"
+      for_each: "{{ mplayers|select|list }}"
+mode: single
+trace:
+  stored_traces: 30
