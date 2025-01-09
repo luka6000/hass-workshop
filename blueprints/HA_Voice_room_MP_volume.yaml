@@ -1,12 +1,14 @@
 blueprint:
-  name: Voice assistant media player volume down on assist
-  description: "On voice assist, set volume to 1/3 on media players in the same room"
+  name: Voice assistant volume ducking
+  description: "On voice assist, set ducking volume by factor on every media player in the same room"
   domain: automation
+  author: LukaGra
+  source_url: https://github.com/luka6000/hass-workshop/blob/main/blueprints/HA_Voice_room_MP_volume.yaml
   input:
     version:
       name: Version
       description: just for you to know
-      default: v250104
+      default: v250109
     assist:
       name: Assist satellite
       description: status entity
@@ -14,9 +16,20 @@ blueprint:
         entity:
           filter:
             - domain: assist_satellite
+    ducking_factor:
+      name: Ducking factor
+      description: "Volume reduction factor"
+      default: 3
+      selector:
+        number:
+          min: 2
+          max: 5
+          mode: slider
+          step: 1
 
 variables:
   assist: !input assist
+  ducking_factor: !input ducking_factor
 
 triggers:
   - trigger: state
@@ -31,18 +44,18 @@ conditions:
 actions:
   - variables:
       mplayers: >-
-        ""{%for entity in
-        area_entities(area_id(assist)) 
-        %}{%if entity|contains("media_player") and entity not in
-        device_entities(device_id(assist))|select("contains",
-        "media_player") %}, "{{ entity }}"{%endif%}{%endfor%}
+        ""{%for entity in [area_id(assist)] |map('area_entities') |first
+        |select('search', 'media_player') |select('is_state','playing')
+        |select('ne', (device_entities(device_id(assist))|select('search',
+        'media_player')|first))|list %}, ["{{entity}}", "{{ (state_attr(entity,
+        'volume_level')|float/ducking_factor)|round(2)}}"]{%endfor%}
   - alias: repeat for each media_player in the area
     repeat:
       sequence:
         - variables:
-            mp: "{{ repeat.item }}"
-            vol: "{{ state_attr(repeat.item, 'volume_level') }}"
-            vol_anon: "{{ (state_attr(repeat.item, 'volume_level')|float/3)|round(2) }}"
+            mp: "{{ (repeat.item)[0] }}"
+            vol_anon: "{{ (repeat.item)[1] }}"
+            vol_base: "{{ ((repeat.item)[1]|float *ducking_factor)|round(2) }}"
         - action: media_player.volume_set
           data:
             volume_level: "{{ vol_anon|float(0.2) }}"
@@ -56,18 +69,20 @@ actions:
     timeout:
       hours: 0
       minutes: 0
-      seconds: 10
+      seconds: 20
       milliseconds: 0
   - alias: repeat for each media_player in the area
     repeat:
       sequence:
         - variables:
-            mp: "{{ repeat.item }}"
-            vol: "{{ state_attr(repeat.item, 'volume_level') }}"
-            vol_old: "{{ (state_attr(repeat.item, 'volume_level')|float *3)|round(2) }}"
+            mp: "{{ (repeat.item)[0] }}"
+            vol_anon: "{{ (repeat.item)[1] }}"
+            vol_base: "{{ ((repeat.item)[1]|float *ducking_factor)|round(2) }}"
+        - condition: template
+          value_template: "{{ state_attr(mp, 'volume_level')|float == vol_anon|float }}"
         - action: media_player.volume_set
           data:
-            volume_level: "{{ vol_old|float(0.2) }}"
+            volume_level: "{{ vol_base|float(0.2) }}"
           target:
             entity_id: "{{ mp }}"
       for_each: "{{ mplayers|select|list }}"
