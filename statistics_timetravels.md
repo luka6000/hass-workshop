@@ -12,7 +12,8 @@ from (
     FROM "statistics"
     where
         metadata_id in (select id from statistics_meta where statistic_id in (
-        'sensor.cold_water_meter', 'sensor.hot_water_meter', 'sensor.cwu_meter', 'sensor.heat_meter'
+        'sensor.cold_water_meter', 'sensor.hot_water_meter', 'sensor.cwu_meter', 'sensor.heat_meter',
+        'sensor.cold_water_meter_cost', 'sensor.hot_water_meter_cost', 'sensor.cwu_meter_cost', 'sensor.heat_meter_cost'
         ))
         and created_ts> unixepoch('now','start of day')-unixepoch('now','localtime')+unixepoch('now') 
         and created_ts< unixepoch('now','start of day','+23 hours','+59 minutes')-unixepoch('now','localtime')+unixepoch('now')
@@ -38,10 +39,11 @@ max values already recorded today for state and sum. Additionally calculate UTC 
 FROM "statistics"
 where
     metadata_id in (select id from statistics_meta where statistic_id in (
-    'sensor.cold_water_meter', 'sensor.hot_water_meter', 'sensor.cwu_meter', 'sensor.heat_meter'
+    'sensor.cold_water_meter', 'sensor.hot_water_meter', 'sensor.cwu_meter', 'sensor.heat_meter',
+    'sensor.cold_water_meter_cost', 'sensor.hot_water_meter_cost', 'sensor.cwu_meter_cost', 'sensor.heat_meter_cost'
     ))
 ```
-These are my meters entity_ids.
+These are my meters entity_ids with coresponding cost sensors.
 
 ```
     and created_ts> unixepoch('now','start of day')-unixepoch('now','localtime')+unixepoch('now') 
@@ -74,7 +76,8 @@ echo "update statistics as s set state=t.state, sum=t.sum
           FROM "statistics"
           where
               metadata_id in (select id from statistics_meta where statistic_id in (
-              'sensor.cold_water_meter', 'sensor.hot_water_meter', 'sensor.cwu_meter', 'sensor.heat_meter'
+                'sensor.cold_water_meter', 'sensor.hot_water_meter', 'sensor.cwu_meter', 'sensor.heat_meter',
+                'sensor.cold_water_meter_cost', 'sensor.hot_water_meter_cost', 'sensor.cwu_meter_cost', 'sensor.heat_meter_cost'
               ))
               and created_ts> unixepoch('now','start of day')-unixepoch('now','localtime')+unixepoch('now') 
               and created_ts< unixepoch('now','start of day','+23 hours','+59 minutes')-unixepoch('now','localtime')+unixepoch('now')
