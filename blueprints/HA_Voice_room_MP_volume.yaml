@@ -41,6 +41,12 @@ conditions:
       - condition: state
         entity_id: !input assist
         state: idle
+      - condition: state
+        entity_id: !input assist
+        state: unavailable
+      - condition: state
+        entity_id: !input assist
+        state: unknown
 actions:
   - variables:
       mplayers: >-
