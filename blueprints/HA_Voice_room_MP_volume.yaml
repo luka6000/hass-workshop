@@ -55,6 +55,8 @@ actions:
         |select('ne', (device_entities(device_id(assist))|select('search',
         'media_player')|first))|list %}, ["{{entity}}", "{{ (state_attr(entity,
         'volume_level')|float/ducking_factor)|round(2)}}"]{%endfor%}
+  - condition: template
+    value_template: "{{ mplayers|select|list != [] }}"
   - alias: repeat for each media_player in the area
     repeat:
       sequence:
